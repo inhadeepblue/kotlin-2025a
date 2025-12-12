@@ -3,27 +3,77 @@ package com.appweek14
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.appweek14.ui.theme.AppWeek14Theme
+import androidx.compose.ui.unit.dp
+import com.appweek14.data.RetrofitClient
+import com.appweek14.data.User
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            AppWeek14Theme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+            HelloRetrofitApp()
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HelloRetrofitApp() {
+    val scope = rememberCoroutineScope()
+    var users by remember { mutableStateOf<List<User>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Hello Retrofit") }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(16.dp)
+                .fillMaxSize()
+        ) {
+            Button(
+                onClick = {
+                    scope.launch {
+                        isLoading = true
+                        errorMessage = ""
+                        try {
+                            val result = RetrofitClient.api.getUsers()
+                            users = result
+                        } catch (e: Exception) {
+                            errorMessage = "에러: ${e.message}"
+                        } finally {
+                            isLoading = false
+                        }
+                    }
+                }
+            ) {
+                Text("Fetch Users")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (isLoading) {
+                CircularProgressIndicator()
+            } else if (errorMessage.isNotEmpty()) {
+                Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
+            } else {
+                LazyColumn {
+                    items(users) { user ->
+                        UserItem(user)
+                    }
                 }
             }
         }
@@ -31,17 +81,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    AppWeek14Theme {
-        Greeting("Android")
+fun UserItem(user: User) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(text = "${user.id}. ${user.name}")
+        Text(text = user.email, style = MaterialTheme.typography.bodySmall)
     }
 }
